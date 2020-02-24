@@ -13,16 +13,23 @@
         <ForecastDataTable Forecasts="forecasts" />
     </Fragment>
 </Fixture>
+
 @code {
     private WeatherForecast[] forecasts = new[]
     {
         new WeatherForecast { Date = DateTime.Now, Summary = "Testy", TemperatureC = 42 }
     };
 
-    private MockForecastService forecastService = new MockForecastService();
+    private IWeatherForecastService forecastService = Mock.Create<IWeatherForecastService>();
+
+    private TaskCompletionSource<WeatherForecast[]> forecastResult = new TaskCompletionSource<WeatherForecast[]>();
+
 
     void Setup()
     {
+        Mock.Arrange(() => forecastService.GetForecastAsync(Arg.IsAny<DateTime>()))
+            .Returns(forecastResult.Task);
+
         Services.AddSingleton<IWeatherForecastService>(forecastService);
     }
 
@@ -42,7 +49,7 @@
         var cut = RenderComponent<FetchData>();
 
         // act
-        WaitForNextRender(() => forecastService.Task.SetResult(forecasts));
+        WaitForNextRender(() => forecastResult.SetResult(forecasts));
 
         // assert
         cut.GetChangesSinceFirstRender().ShouldHaveChanges(

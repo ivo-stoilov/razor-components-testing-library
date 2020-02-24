@@ -9,6 +9,8 @@ using Xunit;
 using Egil.RazorComponents.Testing.SampleApp.Pages;
 using Shouldly;
 using Microsoft.Extensions.DependencyInjection;
+using Telerik.JustMock;
+using System.Threading.Tasks;
 
 namespace Egil.RazorComponents.Testing.SampleApp.CodeOnlyTests
 {
@@ -18,7 +20,11 @@ namespace Egil.RazorComponents.Testing.SampleApp.CodeOnlyTests
         public void Test001()
         {
             // Arrange - add the mock forecast service
-            Services.AddSingleton<IWeatherForecastService, MockForecastService>();
+            var mockForecastService = Mock.Create<IWeatherForecastService>();
+            var forecastResult = new TaskCompletionSource<WeatherForecast[]>();
+            Mock.Arrange(() => mockForecastService.GetForecastAsync(Arg.IsAny<DateTime>()))
+                .Returns(forecastResult.Task);
+            Services.AddSingleton<IWeatherForecastService>(mockForecastService);
 
             // Act - render the FetchData component
             var cut = RenderComponent<FetchData>();
@@ -35,14 +41,17 @@ namespace Egil.RazorComponents.Testing.SampleApp.CodeOnlyTests
         {
             // Setup the mock forecast service
             var forecasts = new[] { new WeatherForecast { Date = DateTime.Now, Summary = "Testy", TemperatureC = 42 } };
-            var mockForecastService = new MockForecastService();
+            var mockForecastService = Mock.Create<IWeatherForecastService>();
+            var forecastResult = new TaskCompletionSource<WeatherForecast[]>();
+            Mock.Arrange(() => mockForecastService.GetForecastAsync(Arg.IsAny<DateTime>()))
+                .Returns(forecastResult.Task);
             Services.AddSingleton<IWeatherForecastService>(mockForecastService);
 
             // Arrange - render the FetchData component
             var cut = RenderComponent<FetchData>();
 
             // Act - pass the test forecasts to the component via the mock services
-            WaitForNextRender(() => mockForecastService.Task.SetResult(forecasts));
+            WaitForNextRender(() => forecastResult.SetResult(forecasts));
 
             // Assert
             // Render an new instance of the ForecastDataTable, passing in the test data
